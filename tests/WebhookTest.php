@@ -75,6 +75,26 @@ class WebhookTest extends TestCase
         Webhook::constructEvent($payload, $sig, self::SECRET);
     }
 
+    public function testThrowsOnEmptySecret(): void
+    {
+        $this->expectException(WebhookSignatureException::class);
+        $this->expectExceptionMessageMatches('/secret must not be empty/i');
+
+        $payload = json_encode(['event' => 'test', 'payload' => []]);
+        $sig = Webhook::generateSignature($payload, 'some-secret');
+        Webhook::constructEvent($payload, $sig, '');
+    }
+
+    public function testThrowsOnOversizedTimestamp(): void
+    {
+        $this->expectException(WebhookSignatureException::class);
+        $this->expectExceptionMessageMatches('/invalid timestamp/i');
+
+        $payload = json_encode(['event' => 'test', 'payload' => []]);
+        $bigTs = str_repeat('9', 100);
+        Webhook::constructEvent($payload, "t={$bigTs},sha256=" . str_repeat('a', 64), self::SECRET);
+    }
+
     public function testThrowsOnMissingSignatureHeader(): void
     {
         $this->expectException(WebhookSignatureException::class);

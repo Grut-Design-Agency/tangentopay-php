@@ -7,9 +7,6 @@ namespace TangentoPay;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
-use GuzzleHttp\HandlerStack;
-use GuzzleHttp\Psr7\Request;
-use GuzzleHttp\Psr7\Response;
 use TangentoPay\Exceptions\AuthenticationException;
 use TangentoPay\Exceptions\NetworkException;
 use TangentoPay\Exceptions\NotFoundException;
@@ -141,12 +138,12 @@ class HttpClient
 
         for ($attempt = 0; $attempt <= $this->maxRetries; $attempt++) {
             try {
+                // Note: params are already encoded into $url by buildUrl().
+                // Do NOT also pass 'query' here — Guzzle would append them again,
+                // producing duplicate query parameters on every GET request.
                 $guzzleOptions = ['headers' => $headers];
                 if ($json !== null) {
                     $guzzleOptions['json'] = $json;
-                }
-                if ($params !== null) {
-                    $guzzleOptions['query'] = $params;
                 }
 
                 $response = $this->guzzle->request($method, $url, $guzzleOptions);
@@ -341,7 +338,9 @@ class HttpClient
         try {
             $raw = (string) $response->getBody();
             if ($raw !== '') {
-                $decoded = json_decode($raw, associative: true);
+                // Depth of 16 is more than enough for error payloads.
+                // The default of 512 is unnecessarily deep for server-controlled input.
+                $decoded = json_decode($raw, associative: true, depth: 16);
                 if (is_array($decoded)) {
                     $body = $decoded;
                 }

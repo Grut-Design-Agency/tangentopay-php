@@ -315,6 +315,22 @@ class HttpClientTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // Query parameters — must not be duplicated
+    // -------------------------------------------------------------------------
+
+    public function testQueryParamsAreNotDuplicated(): void
+    {
+        $history = [];
+        $client = $this->makeClientWithHistory($history, new Response(200, [], '{}'));
+        $client->get('/payments', ['perPage' => 20, 'page' => 2]);
+
+        $uri = (string) $history[0]['request']->getUri();
+        // Each param must appear exactly once.
+        $this->assertSame(1, substr_count($uri, 'perPage=20'), 'perPage appears more than once');
+        $this->assertSame(1, substr_count($uri, 'page=2'), 'page appears more than once');
+    }
+
+    // -------------------------------------------------------------------------
     // Credential masking
     // -------------------------------------------------------------------------
 

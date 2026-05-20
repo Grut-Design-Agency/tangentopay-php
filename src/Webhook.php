@@ -44,6 +44,14 @@ class Webhook
             );
         }
 
+        // An empty secret means hash_hmac() computes with an empty key, which
+        // allows an attacker to forge valid signatures on a misconfigured server.
+        if ($secret === '') {
+            throw new WebhookSignatureException(
+                'Webhook secret must not be empty.',
+            );
+        }
+
         [$timestamp, $signature] = self::parseHeader($sigHeader);
 
         // Validate hex digest format before any timestamp or HMAC work.
@@ -117,7 +125,9 @@ class Webhook
             $part = trim($part);
             if (str_starts_with($part, 't=')) {
                 $ts = substr($part, 2);
-                if (!ctype_digit($ts)) {
+                // ctype_digit does not limit length — a 100-digit string would
+                // overflow to PHP_INT_MAX on cast. Limit to 11 digits (year 2286).
+                if (!ctype_digit($ts) || strlen($ts) > 11) {
                     throw new WebhookSignatureException(
                         'Webhook signature header contains an invalid timestamp.',
                     );
