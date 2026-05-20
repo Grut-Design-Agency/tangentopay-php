@@ -1,0 +1,49 @@
+{
+    "name": "tangentopay/tangentopay-php",
+    "description": "Official PHP SDK for the TangentoPay API",
+    "type": "library",
+    "license": "MIT",
+    "version": "0.1.0",
+    "authors": [
+        {
+            "name": "TangentoPay",
+            "email": "dev@tangentopay.com"
+        }
+    ],
+    "keywords": [
+        "tangentopay",
+        "payments",
+        "fintech",
+        "africa",
+        "stripe",
+        "sdk"
+    ],
+    "homepage": "https://tangentopay.com",
+    "support": {
+        "issues": "https://github.com/Grut-Design-Agency/tangentopay-php/issues",
+        "source": "https://github.com/Grut-Design-Agency/tangentopay-php"
+    },
+    "require": {
+        "php": ">=8.1",
+        "guzzlehttp/guzzle": "^7.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0",
+        "guzzlehttp/promises": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "TangentoPay\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "TangentoPay\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "minimum-stability": "stable"
+}
