@@ -46,22 +46,23 @@ class Webhook
 
         [$timestamp, $signature] = self::parseHeader($sigHeader);
 
+        // Validate hex digest format before any timestamp or HMAC work.
+        // An attacker could supply a non-hex string that passes comparison through
+        // type juggling on non-strict implementations. Checking format first also
+        // avoids leaking timestamp information to callers with a malformed signature.
+        if (!preg_match('/^[0-9a-f]{64}$/i', $signature)) {
+            throw new WebhookSignatureException(
+                'Webhook signature contains an invalid SHA-256 hex digest ' .
+                '(expected exactly 64 hexadecimal characters).',
+            );
+        }
+
         // Replay protection: reject stale events.
         $now = time();
         if (abs($now - $timestamp) > $toleranceS) {
             throw new WebhookSignatureException(
                 "Webhook timestamp is outside the {$toleranceS}s tolerance window. " .
                 'Possible replay attack — ensure your server clock is synchronized.',
-            );
-        }
-
-        // Validate hex digest format before attempting comparison.
-        // An attacker could supply a non-hex string that passes hash comparison
-        // through type juggling or encoding tricks on non-strict implementations.
-        if (!preg_match('/^[0-9a-f]{64}$/i', $signature)) {
-            throw new WebhookSignatureException(
-                'Webhook signature contains an invalid SHA-256 hex digest ' .
-                '(expected exactly 64 hexadecimal characters).',
             );
         }
 

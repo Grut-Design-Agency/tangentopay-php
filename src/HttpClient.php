@@ -49,7 +49,7 @@ class HttpClient
 
     private readonly string $baseUrl;
     private readonly string $basePath;
-    private readonly Client $guzzle;
+    private Client $guzzle;
     private readonly int $maxRetries;
 
     /**
