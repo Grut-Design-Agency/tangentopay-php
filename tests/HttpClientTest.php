@@ -387,7 +387,6 @@ class HttpClientTest extends TestCase
     private function injectGuzzle(HttpClient $client, Client $guzzle): void
     {
         $prop = new \ReflectionProperty(HttpClient::class, 'guzzle');
-        $prop->setAccessible(true);
         $prop->setValue($client, $guzzle);
     }
 }
