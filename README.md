@@ -252,7 +252,7 @@ Use any future expiry date, any 3-digit CVC, and any postal code.
 | `payouts` | `create()`, `bulk()`, `list()` | Send funds to recipients |
 | `transfers` | `toMain()`, `list()` | Move funds between wallets |
 | `wallets` | `mainBalance()`, `serviceBalance()`, `manualBalance()` | Check balances |
-| `services` | `listAll()`, `get()`, `create()`, `update()`, `delete()`, `createApiKey()`, `listApiKeys()`, `revokeApiKey()`, `updateWebhook()` | Manage services and keys |
+| `services` | `listAll()`, `get()`, `create()`, `update()`, `delete()`, `createApiKey()`, `listApiKeys()`, `revokeApiKey()`, `updateWebhook()`, `listPaymentMethods()`, `setPaymentMethod()`, `setPaymentMethods()` | Manage services, keys, and payment methods |
 | `customers` | `list()`, `get()`, `create()`, `update()`, `delete()`, `importCsv()` | Customer management |
 | `analytics` | `dashboard()`, `paymentsChart()`, `grossVolume()`, `totalPayouts()` | Reporting and analytics |
 
@@ -329,18 +329,33 @@ Unlike checkout sessions, top-ups do not require a products array. Pass `amount`
 
 ## Payment methods
 
-Payment methods available on the Stripe Checkout page are controlled by your **Stripe Dashboard settings** — TangentoPay does not hard-code them.
+Each service has its own set of enabled payment methods. Cards (Visa/Mastercard) are always enabled. Company accounts that have completed KYB verification can enable additional Stripe methods (Google Pay, Apple Pay, Alipay, WeChat Pay) per service via the SDK.
 
-| Method | Default | Enable via |
+| Method | Default | Availability |
 |---|---|---|
-| Visa / Mastercard / Amex (card) | ✅ On for all accounts | Always available |
-| Google Pay | Off | Stripe Dashboard → Payment methods |
-| Apple Pay | Off | Stripe Dashboard → Payment methods |
-| Alipay | Off | Stripe Dashboard → Payment methods |
-| WeChat Pay | Off | Stripe Dashboard → Payment methods |
+| Visa / Mastercard / Amex (card) | ✅ Always enabled | All account types |
+| Google Pay | Off | Company accounts with KYB verification |
+| Apple Pay | Off | Company accounts with KYB verification |
+| Alipay | Off | Company accounts with KYB verification |
+| WeChat Pay | Off | Company accounts with KYB verification |
 | MoMo (Mobile Money) | Coming soon | Will be added as a native TangentoPay method |
 
-Cards are accepted by default for every account type. Wallets (Google Pay, Apple Pay) and regional methods (Alipay, WeChat Pay) can be toggled on or off per account from the Stripe Dashboard without any code changes.
+### Managing payment methods per service
+
+```php
+// List all payment methods for a service (with enabled/locked/reason status)
+$methods = $merchant->services->listPaymentMethods($serviceId);
+// [{ slug: 'card', name: 'Card', enabled: true, locked: false }, ...]
+
+// Toggle a single method on or off
+$merchant->services->setPaymentMethod($serviceId, 'google_pay', true);
+
+// Replace the entire set of enabled methods at once
+// card must always be included
+$merchant->services->setPaymentMethods($serviceId, ['card', 'apple_pay', 'alipay']);
+```
+
+Checkout sessions for that service will only show the methods you have enabled. If the account is not KYB-verified, non-card methods are returned as `locked: true` with a human-readable `reason`.
 
 > **MoMo note:** Mobile Money support is on the roadmap and will be integrated as a first-class TangentoPay payment method, separate from Stripe.
 
