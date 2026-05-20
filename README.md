@@ -17,6 +17,8 @@ Official PHP SDK for the [TangentoPay](https://tangentopay.com) API — accept p
 - [Authentication](#authentication)
 - [Test mode](#test-mode)
 - [Resources](#resources)
+- [Wallet top-up](#wallet-top-up)
+- [Payment methods](#payment-methods)
 - [Error handling](#error-handling)
 - [Webhook verification](#webhook-verification)
 - [Supported currencies](#supported-currencies)
@@ -253,6 +255,94 @@ Use any future expiry date, any 3-digit CVC, and any postal code.
 | `services` | `listAll()`, `get()`, `create()`, `update()`, `delete()`, `createApiKey()`, `listApiKeys()`, `revokeApiKey()`, `updateWebhook()` | Manage services and keys |
 | `customers` | `list()`, `get()`, `create()`, `update()`, `delete()`, `importCsv()` | Customer management |
 | `analytics` | `dashboard()`, `paymentsChart()`, `grossVolume()`, `totalPayouts()` | Reporting and analytics |
+
+---
+
+## Wallet top-up
+
+Top-up lets authenticated merchants add funds to their TangentoPay wallet via Stripe Checkout. It uses the `MerchantClient`.
+
+### Why `idempotency_key` is required
+
+Every call to `$merchant->topups->create()` is an independent function call. If you retry after a network failure without passing the same key, the server sees a brand-new request and creates a second Stripe Checkout Session — potentially charging the user twice.
+
+The rule is simple: **generate the key once, store it, reuse it on every retry of the same top-up intent**. Passing no key throws an `\InvalidArgumentException` immediately.
+
+```php
+use TangentoPay\MerchantClient;
+use TangentoPay\Resources\TopupsResource;
+
+$merchant = new MerchantClient([
+    'apiToken' => $_ENV['TANGENTOPAY_API_TOKEN'],
+]);
+
+// Step 1 — generate ONCE and store in your session / database
+$key = TopupsResource::generateIdempotencyKey();
+
+// Step 2 — initiate the top-up (safe to retry with the same key)
+$session = $merchant->topups->create([
+    'amount'          => 50.00,
+    'currency_code'   => 'USD',
+    'idempotency_key' => $key,     // required — throws if missing
+    'return_url'      => 'https://app.com/topup/success',
+    'cancel_url'      => 'https://app.com/topup/cancel',
+]);
+
+// Step 3 — redirect the user to complete payment
+header('Location: ' . $session->redirectUrl);
+```
+
+**On retry (network timeout, double-tap):**
+
+```php
+// Same key → server returns the existing session, no new charge
+$session = $merchant->topups->create([
+    'amount'          => 50.00,
+    'currency_code'   => 'USD',
+    'idempotency_key' => $key,   // same key as before
+    'return_url'      => 'https://app.com/topup/success',
+]);
+// $session->redirectUrl is the same Stripe URL — user continues where they left off
+```
+
+**Storing the key in a Laravel session:**
+
+```php
+// Generate and store before showing the top-up form
+$key = session()->remember('topup_idempotency_key', fn() => TopupsResource::generateIdempotencyKey());
+
+$session = $merchant->topups->create([
+    'amount'          => (float) $request->amount,
+    'currency_code'   => 'USD',
+    'idempotency_key' => $key,
+    'return_url'      => route('topup.success'),
+]);
+
+// Clear it only after the webhook confirms completion
+```
+
+### Top-up without products
+
+Unlike checkout sessions, top-ups do not require a products array. Pass `amount` + `currency_code` directly — the payment line item is created automatically.
+
+---
+
+## Payment methods
+
+Payment methods available on the Stripe Checkout page are controlled by your **Stripe Dashboard settings** — TangentoPay does not hard-code them.
+
+| Method | Default | Enable via |
+|---|---|---|
+| Visa / Mastercard / Amex (card) | ✅ On for all accounts | Always available |
+| Google Pay | Off | Stripe Dashboard → Payment methods |
+| Apple Pay | Off | Stripe Dashboard → Payment methods |
+| Alipay | Off | Stripe Dashboard → Payment methods |
+| WeChat Pay | Off | Stripe Dashboard → Payment methods |
+| MoMo (Mobile Money) | Coming soon | Will be added as a native TangentoPay method |
+
+Cards are accepted by default for every account type. Wallets (Google Pay, Apple Pay) and regional methods (Alipay, WeChat Pay) can be toggled on or off per account from the Stripe Dashboard without any code changes.
+
+> **MoMo note:** Mobile Money support is on the roadmap and will be integrated as a first-class TangentoPay payment method, separate from Stripe.
 
 ---
 
