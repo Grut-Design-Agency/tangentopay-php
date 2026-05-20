@@ -3,7 +3,6 @@
     "description": "Official PHP SDK for the TangentoPay API",
     "type": "library",
     "license": "MIT",
-    "version": "0.1.0",
     "authors": [
         {
             "name": "TangentoPay",
