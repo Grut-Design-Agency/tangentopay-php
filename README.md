@@ -59,15 +59,32 @@ $client = new ServiceClient([
     'serviceKey' => $_ENV['TANGENTOPAY_SERVICE_KEY'],
 ]);
 
+// Product-based checkout (e-commerce / WooCommerce)
 $session = $client->checkout->create([
     'products'      => [['name' => 'Pro Plan', 'price' => 49.99, 'quantity' => 1]],
-    'currencyCode'  => 'USD',
-    'customerEmail' => 'buyer@example.com',
-    'returnUrl'     => 'https://myshop.com/thank-you',
-    'cancelUrl'     => 'https://myshop.com/cart',
+    'currency_code' => 'USD',
+    'customer_email'=> 'buyer@example.com',
+    'return_url'    => 'https://myshop.com/thank-you',
+    'cancel_url'    => 'https://myshop.com/cart',
 ]);
 
 // Redirect the customer to the hosted checkout page
+header('Location: ' . $session->redirectUrl);
+```
+
+#### Amount-only checkout (payfac / money transfer)
+
+Use when you have **no product catalogue** — payfac integrations, wallet top-ups via service key, or any scenario where you just need to collect a fixed amount.
+
+```php
+$session = $client->checkout->create([
+    'amount'        => 5000,              // total amount — no products array
+    'description'   => 'Account top-up', // shown on Stripe checkout page
+    'currency_code' => 'XAF',
+    'return_url'    => 'https://myapp.com/success',
+    'cancel_url'    => 'https://myapp.com/cancel',
+]);
+
 header('Location: ' . $session->redirectUrl);
 ```
 
