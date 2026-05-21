@@ -424,6 +424,34 @@ Checkout sessions for that service will only show the methods you have enabled. 
 
 ---
 
+## Service request logs
+
+Every API request authenticated via `X-Service-Key` is automatically logged. The logs mirror the **Dashboard → Service → Logs** view.
+
+```php
+// List recent logs for a service (last 25 by default)
+$page = $merchant->logs->list($serviceId, [
+    'per_page'  => 25,
+    'status'    => 500,         // filter by HTTP status code
+    'method'    => 'POST',      // filter by HTTP method
+    'date_from' => '2026-05-01',
+    'date_to'   => '2026-05-31',
+]);
+
+foreach ($page['data']['data'] as $entry) {
+    echo $entry['request_id'] . ' ' . $entry['status_code'] . ' '
+       . $entry['application'] . ' ' . $entry['duration_ms'] . "ms\n";
+}
+// a1b2c3d4-...  200  WooCommerce Inc.  342ms
+
+// Fetch a single entry by its request ID
+// (same UUID as the X-Request-ID response header)
+$detail = $merchant->logs->get($serviceId, 'a1b2c3d4-e5f6-7890-abcd-ef1234567890');
+echo $detail['data']['transaction_uid']; // TXN-...
+```
+
+---
+
 ## Error handling
 
 All SDK exceptions extend `TangentoPayException` so you can catch the whole family with one clause or be specific.
