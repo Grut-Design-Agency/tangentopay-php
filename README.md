@@ -475,7 +475,7 @@ use TangentoPay\Webhook;
 $event = Webhook::constructEvent(
     payload:          $rawBody,       // string — raw request body, do NOT parse first
     sigHeader:        $sigHeader,     // value of the X-TangentoPay-Signature header
-    secret:           $webhookSecret, // whsec_... from your dashboard
+    secret:           $webhookSecret, // whs_live_... or whs_test_... from API Keys (shown once)
     toleranceS:       300,            // reject events older than 5 min (default)
 );
 ```
@@ -561,7 +561,7 @@ Use `Webhook::generateSignature()` to create valid signatures in your test suite
 use TangentoPay\Webhook;
 
 $payload = json_encode(['event' => 'transaction.payment_completed', 'payload' => []]);
-$secret  = 'whsec_test_secret';
+$secret  = 'whs_test_yoursecrethere';
 
 // Generate a valid signature (pass a fixed timestamp to avoid flakiness)
 $signature = Webhook::generateSignature($payload, $secret, 1716134400);
