@@ -245,7 +245,7 @@ class HttpClient
         $headers = [
             'Content-Type' => 'application/json',
             'Accept'       => 'application/json',
-            'User-Agent'   => 'tangentopay-php/0.2.7',
+            'User-Agent'   => 'tangentopay-php/0.2.8',
         ];
 
         // Merge extra headers first so protected auth headers can override them.

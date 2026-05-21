@@ -9,7 +9,7 @@ namespace TangentoPay;
  */
 class TangentoPay
 {
-    public const VERSION = '0.2.7';
+    public const VERSION = '0.2.8';
 
     /**
      * Perform the two-step login + OTP flow and return a ready-to-use MerchantClient.
