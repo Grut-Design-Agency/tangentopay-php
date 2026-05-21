@@ -7,6 +7,7 @@ namespace TangentoPay;
 use TangentoPay\Resources\AnalyticsResource;
 use TangentoPay\Resources\AuthResource;
 use TangentoPay\Resources\CustomersResource;
+use TangentoPay\Resources\LogsResource;
 use TangentoPay\Resources\PaymentsResource;
 use TangentoPay\Resources\PayoutsResource;
 use TangentoPay\Resources\RefundsResource;
@@ -32,6 +33,8 @@ class MerchantClient
     public readonly ServicesResource $services;
     public readonly CustomersResource $customers;
     public readonly AnalyticsResource $analytics;
+    /** Per-service API request logs — mirrors Dashboard → Service → Logs tab. */
+    public readonly LogsResource $logs;
 
     private readonly HttpClient $http;
 
@@ -64,6 +67,7 @@ class MerchantClient
         $this->services  = new ServicesResource($this->http);
         $this->customers = new CustomersResource($this->http);
         $this->analytics = new AnalyticsResource($this->http);
+        $this->logs      = new LogsResource($this->http);
     }
 
     public function __debugInfo(): array
