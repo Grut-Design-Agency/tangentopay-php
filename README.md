@@ -17,6 +17,7 @@ Official PHP SDK for the [TangentoPay](https://tangentopay.com) API — accept p
 - [Authentication](#authentication)
 - [Test mode](#test-mode)
 - [Resources](#resources)
+- [Service setup](#service-setup)
 - [Wallet top-up](#wallet-top-up)
 - [Payment methods](#payment-methods)
 - [Error handling](#error-handling)
@@ -164,7 +165,7 @@ TangentoPay uses two separate credentials depending on what you are doing:
 # .env (never commit this file)
 TANGENTOPAY_SERVICE_KEY=pk_live_xxxxxxxxxxxxxxxxxxxxxxxx
 TANGENTOPAY_API_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6...
-TANGENTOPAY_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxxx
+TANGENTOPAY_WEBHOOK_SECRET=whs_live_xxxxxxxxxxxxxxxxxxxxxxxx  # from API Keys, not Webhook settings
 ```
 
 ### Obtaining a token programmatically
@@ -252,7 +253,7 @@ Use any future expiry date, any 3-digit CVC, and any postal code.
 | `payouts` | `create()`, `bulk()`, `list()` | Send funds to recipients |
 | `transfers` | `toMain()`, `list()` | Move funds between wallets |
 | `wallets` | `mainBalance()`, `serviceBalance()`, `manualBalance()` | Check balances |
-| `services` | `listAll()`, `get()`, `create()`, `update()`, `delete()`, `createApiKey()`, `listApiKeys()`, `revokeApiKey()`, `updateWebhook()`, `listPaymentMethods()`, `setPaymentMethod()`, `setPaymentMethods()` | Manage services, keys, and payment methods |
+| `services` | `listAll()`, `get()`, `create()`, `update()`, `delete()`, `createApiKey()`, `listApiKeys()`, `rotateApiKey()`, `revokeApiKey()`, `updateWebhook()`, `listPaymentMethods()`, `setPaymentMethod()`, `setPaymentMethods()` | Manage services, keys, and payment methods |
 | `customers` | `list()`, `get()`, `create()`, `update()`, `delete()`, `importCsv()` | Customer management |
 | `analytics` | `dashboard()`, `paymentsChart()`, `grossVolume()`, `totalPayouts()` | Reporting and analytics |
 
@@ -324,6 +325,51 @@ $session = $merchant->topups->create([
 ### Top-up without products
 
 Unlike checkout sessions, top-ups do not require a products array. Pass `amount` + `currency_code` directly — the payment line item is created automatically.
+
+---
+
+## Service setup
+
+### WordPress / WooCommerce plugin
+
+1. Log in to [TangentoPay Dashboard](https://tangentopay.com)
+2. **Services → Create service** — type: `plugin`
+3. **API Keys → Create key** — type: `live` (and `test` for test mode)
+4. Copy all three credentials immediately (shown **once only**):
+   - `publicKey` (`pk_live_…`) → **Live Service Key** in WooCommerce plugin settings
+   - `webhookSecret` (`whs_live_…`) → **Live Webhook Secret** in WooCommerce plugin settings
+5. Copy the **Webhook URL** shown in WooCommerce → paste it into **Dashboard → Webhooks**
+6. The `secretKey` (`sk_live_…`) is not needed for the WordPress plugin — store it safely
+
+### SDK / server-side integration
+
+```php
+use TangentoPay\TangentoPay;
+
+$merchant = TangentoPay::login('me@example.com', 'password', '123456');
+
+// Create key pair (run once during setup)
+$pair = $merchant->services->createApiKey($serviceId, 'Production server', 'live');
+
+// Store immediately — shown once only:
+echo $pair->publicKey;      // pk_live_…  → X-Service-Key
+echo $pair->secretKey;      // sk_live_…
+echo $pair->webhookSecret;  // whs_live_… → webhook verification
+
+// Rotate when needed (old credentials stop working immediately)
+$rotated = $merchant->services->rotateApiKey($serviceId, $pair->id);
+echo $rotated->publicKey;
+echo $rotated->webhookSecret;
+```
+
+**Environment variables (.env):**
+```
+TANGENTOPAY_SERVICE_KEY=pk_live_…        # X-Service-Key for checkout
+TANGENTOPAY_SECRET_KEY=sk_live_…         # privileged server calls (future)
+TANGENTOPAY_WEBHOOK_SECRET=whs_live_…    # from API Keys, not Webhook settings
+TANGENTOPAY_TEST_SERVICE_KEY=pk_test_…
+TANGENTOPAY_TEST_WEBHOOK_SECRET=whs_test_…
+```
 
 ---
 
