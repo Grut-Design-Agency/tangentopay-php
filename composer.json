@@ -1,6 +1,5 @@
 {
     "name": "tangentopay/tangentopay-php",
-    "version": "0.3.0",
     "description": "Official PHP SDK for the TangentoPay API",
     "type": "library",
     "license": "MIT",
