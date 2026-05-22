@@ -278,11 +278,11 @@ Use any future expiry date, any 3-digit CVC, and any postal code.
 
 ## Wallet top-up
 
-Top-up lets authenticated merchants add funds to their TangentoPay wallet via Stripe Checkout. It uses the `MerchantClient`.
+Top-up lets authenticated merchants add funds to their TangentoPay wallet via **Stripe Checkout** (cards, any currency) or **Fapshi USSD push** (MTN MoMo / Orange Money, XAF only). It uses the `MerchantClient`.
 
 ### Why `idempotency_key` is required
 
-Every call to `$merchant->topups->create()` is an independent function call. If you retry after a network failure without passing the same key, the server sees a brand-new request and creates a second Stripe Checkout Session — potentially charging the user twice.
+Every call to `$merchant->topups->create()` is an independent function call. If you retry after a network failure without passing the same key, the server sees a brand-new request and creates a second charge — potentially double-billing the user.
 
 The rule is simple: **generate the key once, store it, reuse it on every retry of the same top-up intent**. Passing no key throws an `\InvalidArgumentException` immediately.
 
@@ -297,7 +297,7 @@ $merchant = new MerchantClient([
 // Step 1 — generate ONCE and store in your session / database
 $key = TopupsResource::generateIdempotencyKey();
 
-// Step 2 — initiate the top-up (safe to retry with the same key)
+// Step 2 — initiate the card top-up (safe to retry with the same key)
 $session = $merchant->topups->create([
     'amount'          => 50.00,
     'currency_code'   => 'USD',
@@ -310,17 +310,24 @@ $session = $merchant->topups->create([
 header('Location: ' . $session->redirectUrl);
 ```
 
-**On retry (network timeout, double-tap):**
+### MoMo top-up (MTN / Orange Money)
+
+For XAF top-ups via USSD push. The user receives a prompt on their phone; no browser redirect needed.
+
+> **Fapshi fee:** 2.2% added on top. A top-up of 10,000 XAF charges the user 10,220 XAF. The `grossAmount` field shows the actual phone charge.
+> **Hold period:** Card top-ups are held 10 days (chargeback protection). MoMo top-ups credit `available_balance` immediately.
 
 ```php
-// Same key → server returns the existing session, no new charge
-$session = $merchant->topups->create([
-    'amount'          => 50.00,
-    'currency_code'   => 'USD',
-    'idempotency_key' => $key,   // same key as before
-    'return_url'      => 'https://app.com/topup/success',
+$topup = $merchant->topups->create([
+    'amount'          => 10000,
+    'currency_code'   => 'XAF',
+    'idempotency_key' => TopupsResource::generateIdempotencyKey(),
+    'payment_source'  => 'mtn_momo',  // or 'orange_money'
+    'phone'           => '650123456', // format: 6XXXXXXXX (no country code)
 ]);
-// $session->redirectUrl is the same Stripe URL — user continues where they left off
+
+echo $topup->grossAmount;       // 10220 — what user's phone is charged
+echo $topup->transactionStatus; // pending — await Fapshi webhook
 ```
 
 **Storing the key in a Laravel session:**
@@ -401,7 +408,7 @@ Each service has its own set of enabled payment methods. Cards (Visa/Mastercard)
 | Apple Pay | Off | Company accounts with KYB verification |
 | Alipay | Off | Company accounts with KYB verification |
 | WeChat Pay | Off | Company accounts with KYB verification |
-| MoMo (Mobile Money) | Coming soon | Will be added as a native TangentoPay method |
+| MTN MoMo / Orange Money | ✅ Available (XAF only) | Via Fapshi — wallet top-ups and payouts |
 
 ### Managing payment methods per service
 
@@ -420,7 +427,7 @@ $merchant->services->setPaymentMethods($serviceId, ['card', 'apple_pay', 'alipay
 
 Checkout sessions for that service will only show the methods you have enabled. If the account is not KYB-verified, non-card methods are returned as `locked: true` with a human-readable `reason`.
 
-> **MoMo note:** Mobile Money support is on the roadmap and will be integrated as a first-class TangentoPay payment method, separate from Stripe.
+> **MoMo:** MTN MoMo and Orange Money are now live via Fapshi for XAF wallet top-ups and payouts. Use `payment_source: 'mtn_momo'` or `'orange_money'` in `$merchant->topups->create()`. Check provider availability before rendering MoMo options via `GET /api/v1/provider-status`.
 
 ---
 

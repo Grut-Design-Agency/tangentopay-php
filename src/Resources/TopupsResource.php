@@ -19,12 +19,8 @@ class TopupsResource
      *   amount: float|int,
      *   currency_code?: string,
      *   idempotency_key: string,
-     *   payment_source?: 'card'|'mtn_momo'|'orange_money'|'bank',
-     *   account_details?: array{
-     *     phone_number?: string,
-     *     bank_name?: string,
-     *     account_number?: string,
-     *   },
+     *   payment_source?: 'card'|'mtn_momo'|'orange_money',
+     *   phone?: string,
      *   return_url?: string,
      *   cancel_url?: string,
      * } $params
@@ -33,10 +29,11 @@ class TopupsResource
      * {@see TopupsResource::generateIdempotencyKey()} and reuse on every retry.
      *
      * `payment_source` defaults to `"card"` (Stripe Checkout).
-     * - `"card"`:         Visa/Mastercard/Amex. Returns `redirect_url`.
-     * - `"mtn_momo"`:     MTN Mobile Money (XAF). Requires `account_details.phone_number`. Coming soon.
-     * - `"orange_money"`: Orange Money (XAF).   Requires `account_details.phone_number`. Coming soon.
-     * - `"bank"`:         Bank transfer. Requires `account_details.bank_name` + `account_number`. Coming soon.
+     * - `"card"`:         Visa/Mastercard/Amex via Stripe Checkout. Returns `redirect_url`.
+     * - `"mtn_momo"`:     MTN Mobile Money via Fapshi USSD push (XAF only, max 500,000 XAF).
+     *                     Requires `phone` (format: 6XXXXXXXX — no country code).
+     *                     Fapshi charges 2.2% on top; `gross_amount` in response shows the user's total.
+     * - `"orange_money"`: Orange Money via Fapshi (XAF only). Same as mtn_momo.
      */
     public function create(array $params): Transaction
     {
@@ -48,18 +45,17 @@ class TopupsResource
         }
 
         $source = $params['payment_source'] ?? 'card';
-        $validSources = ['card', 'mtn_momo', 'orange_money', 'bank'];
+        $validSources = ['card', 'mtn_momo', 'orange_money'];
         if (!in_array($source, $validSources, true)) {
             throw new \InvalidArgumentException(
                 "Invalid payment_source '{$source}'. Must be one of: " . implode(', ', $validSources)
             );
         }
 
-        if (in_array($source, ['mtn_momo', 'orange_money'], true) && empty($params['account_details']['phone_number'])) {
-            throw new \InvalidArgumentException("account_details.phone_number is required for {$source} top-ups.");
-        }
-        if ($source === 'bank' && (empty($params['account_details']['bank_name']) || empty($params['account_details']['account_number']))) {
-            throw new \InvalidArgumentException('account_details.bank_name and account_number are required for bank top-ups.');
+        if (in_array($source, ['mtn_momo', 'orange_money'], true) && empty($params['phone'])) {
+            throw new \InvalidArgumentException(
+                "phone is required for {$source} top-ups. Format: 6XXXXXXXX (Cameroon number, no country code)."
+            );
         }
 
         $data = $this->http->post('/topups', $params);
